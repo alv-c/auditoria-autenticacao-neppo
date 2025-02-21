@@ -8,98 +8,124 @@ const startSearchUsers = () => {
         headers: myHeadersGetToken,
         body: '{}',
         redirect: "follow",
-        mode: 'no-cors'
     };
     fetch(`https://api-auth.neppo.com.br/oauth2/token?grant_type=${process.env.GRANT_TYPE}&username=${process.env.USERNAME_AUTH_NEPPO}&password=${process.env.PASSWORD_AUTH_NEPPO}`, requestOptionsGetToken)
         .then((response) => response.text())
         .then((result) => {
             let response = JSON.parse(result);
-            getUsers(`Bearer ${response.access_token}`);
+            let dataRequest = {
+                token: `Bearer ${response.access_token}`,
+                requisicoes: {
+                    1: {
+                        indice: 'usuarios_agentes', //referência para mapeamento do objeto de retorno
+                        body: JSON.stringify({
+                            "conditions": [
+                                {
+                                    "key": "profile.id",
+                                    "value": 2,
+                                    "operator": "EQNUM"
+                                },
+                                {
+                                    "key": "profile.id",
+                                    "value": 16,
+                                    "operator": "EQNUM",
+                                    "logic": "OR"
+                                },
+                                {
+                                    "key": "active",
+                                    "operator": "IS_TRUE",
+                                    "logic": "AND"
+                                }
+                            ],
+                            "size": 1000
+                        }),
+                        url: 'https://api.neppo.com.br/chatapi/1.0/api/users'
+                    },
+                    2: {
+                        indice: 'usuarios_clientes',
+                        body: JSON.stringify({
+                            "conditions": [
+                                {
+                                    "key": "groupConf.id",
+                                    "value": 25,
+                                    "operator": "EQNUM"
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "OPEN",
+                                    "operator": "EQ",
+                                    "logic": "AND"
+                                }
+                            ],
+                            "size": 500
+                        }),
+                        url: 'https://api.neppo.com.br/chatapi/1.0/api/user-session'
+                    }
+                }
+            }
+            getUsers(dataRequest);
         })
         .catch((error) => console.error(error));
 }
 
 // busca usuarios da API NEPPO utilizando o token de autenticacao retornado de "startSearchUsers"
-const getUsers = (token) => {
+const getUsers = async (dataRequest) => {
     const myHeaders = new Headers();
-    myHeaders.append("Authorization", token);
+    myHeaders.append("Authorization", dataRequest?.token);
     myHeaders.append("Content-Type", "application/json");
-    const raw = JSON.stringify({
-        "conditions": [
-            {
-                "key": "profile.id",
-                "value": 2,
-                "operator": "EQNUM"
-            },
-            {
-                "key": "profile.id",
-                "value": 16,
-                "operator": "EQNUM",
-                "logic": "OR"
-            },
-            {
-                "key": "active",
-                "operator": "IS_TRUE",
-                "logic": "AND"
-            }
-        ],
-        "size": 1000
-    });
-
-    const requestOptions = {
-        method: "POST",
-        headers: myHeaders,
-        body: raw,
-        redirect: "follow"
-    };
-
-    fetch("https://api.neppo.com.br/chatapi/1.0/api/users", requestOptions)
-        .then((response) => response.text())
-        .then((result) => {
-            constructGroups(filterData(JSON.parse(result).results));
-        })
-        .catch((error) => console.error(error));
-}
-
-// Controi grupos de usuarios com base nos status de cada usuario
-const constructGroups = (data) => {
-    let grupos = {
-        ONLINE: [],
-        OFFLINE: [],
-        PAUSE: []
-    };
-    data?.forEach(usuario => {
-        const nome = usuario[0];
-        const status = usuario[1];
-        const data = usuario[2];
-
-        if (status === 'ONLINE') {
-            grupos.ONLINE.push([nome, status, data]);
-        } else if (status === 'OFFLINE') {
-            grupos.OFFLINE.push([nome, status, data]);
-        } else if (status.toUpperCase().includes('PAUSE')) {
-            grupos.PAUSE.push([nome, status, data]);
+    let data = Array();
+    const promises = [];
+    for (let chave in dataRequest?.requisicoes) {
+        if (dataRequest.requisicoes.hasOwnProperty(chave)) {
+            const requestOptions = {
+                method: "POST",
+                headers: myHeaders,
+                body: dataRequest.requisicoes[chave].body,
+                redirect: "follow"
+            };
+            const promise = fetch(dataRequest.requisicoes[chave].url, requestOptions)
+                .then((response) => response.text())
+                .then((result) => {
+                    data[dataRequest.requisicoes[chave].indice] = JSON.parse(result).results;
+                })
+                .catch((error) => console.error(error));
+            promises.push(promise);
         }
-    });
-
-    // Retorna os grupos
-    // return grupos;
-    console.log(grupos);
+    }
+    await Promise.all(promises);
+    constructGroups(filterData(data));
 };
 
 // filtra os dados dos usuarios, mantendo apenas o necessario para a construcao dos grupos -> 
 // Nome | Status | Data da ultima autenticacao
 const filterData = (data) => {
     let arrayData = Array();
-    data?.forEach((item) => {
+    Object.keys(data)?.forEach((key) => {
         let arrayAux = Array();
-        arrayAux.push(
-            item.displayName,
-            item.agent.status,
-            formatTimeDifference(item.agent.updatedAt)
-        );
+        data[key]?.forEach((item) => {
+            let itemData;
+            if (key === 'usuarios_agentes') { //referência para mapeamento do objeto de retorno
+                itemData = [
+                    item.displayName,
+                    item.agent.status,
+                    formatTimeDifference(returnDateBr(item.agent.updatedAt))
+                ];
+            } else if (key === 'usuarios_clientes') {
+                itemData = [
+                    item.user.displayName,
+                    'CHATBOT_EM_ESPERA',
+                    formatTimeDifference(returnDateBr(item.updatedAt))
+                ];
+            }
+            arrayAux.push(itemData);
+        });
         arrayData.push(arrayAux);
     });
+
+    function returnDateBr(data) {
+        return new Date(data.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    };
+
     return arrayData;
 }
 
@@ -127,5 +153,35 @@ const formatTimeDifference = (updatedAt) => {
     }
     return timeDifference || '0m';
 }
+
+// Constroi grupos de usuarios com base nos status de cada usuario
+const constructGroups = (data) => {
+    let grupos = {
+        AGENTES_ONLINE: [],
+        AGENTES_OFFLINE: [],
+        AGENTES_PAUSE: [],
+        CHATBOT_EM_ESPERA: []
+    };
+    data?.forEach(arrayInterno => {
+        arrayInterno.forEach(usuario => {
+            const nome = usuario[0];
+            const status = usuario[1];
+            const data = usuario[2];
+            if (status === 'ONLINE') {
+                grupos.AGENTES_ONLINE.push([nome, status, data]);
+            } else if (status === 'OFFLINE') {
+                grupos.AGENTES_OFFLINE.push([nome, status, data]);
+            } else if (status.toUpperCase().includes('PAUSE')) {
+                grupos.AGENTES_PAUSE.push([nome, status, data]);
+            } else if (status === 'CHATBOT_EM_ESPERA') {
+                grupos.CHATBOT_EM_ESPERA.push([nome, status, data]);
+            }
+        });
+    });
+
+    // Retorna os grupos
+    // return grupos;
+    console.log(grupos);
+};
 
 module.exports = { startSearchUsers };
