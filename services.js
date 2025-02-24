@@ -17,7 +17,7 @@ const startSearchUsers = () => {
                 token: `Bearer ${response.access_token}`,
                 requisicoes: {
                     1: {
-                        indice: 'usuarios_agentes', //referência para mapeamento do objeto de retorno
+                        indice: 'agentes_nao_autenticados', //referência para mapeamento do objeto de retorno
                         body: JSON.stringify({
                             "conditions": [
                                 {
@@ -37,12 +37,12 @@ const startSearchUsers = () => {
                                     "logic": "AND"
                                 }
                             ],
-                            "size": 1000
+                            "size": 10000
                         }),
                         url: 'https://api.neppo.com.br/chatapi/1.0/api/users'
                     },
                     2: {
-                        indice: 'usuarios_clientes',
+                        indice: 'usuarios_recepcao_espera',
                         body: JSON.stringify({
                             "conditions": [
                                 {
@@ -57,7 +57,27 @@ const startSearchUsers = () => {
                                     "logic": "AND"
                                 }
                             ],
-                            "size": 500
+                            "size": 10000
+                        }),
+                        url: 'https://api.neppo.com.br/chatapi/1.0/api/user-session'
+                    },
+                    3: {
+                        indice: 'usuarios_gerais_espera',
+                        body: JSON.stringify({
+                            "conditions": [
+                                {
+                                    "key": "status",
+                                    "value": "WAITING",
+                                    "operator": "EQ"
+                                },
+                                {
+                                    "key": "user.typeUser",
+                                    "value": "USER",
+                                    "operator": "LIKE",
+                                    "logic": "AND"
+                                }
+                            ],
+                            "size": 10000
                         }),
                         url: 'https://api.neppo.com.br/chatapi/1.0/api/user-session'
                     }
@@ -104,16 +124,22 @@ const filterData = (data) => {
         let arrayAux = Array();
         data[key]?.forEach((item) => {
             let itemData;
-            if (key === 'usuarios_agentes') { //referência para mapeamento do objeto de retorno
+            if (key === 'agentes_nao_autenticados') { //referência para mapeamento do objeto de retorno
                 itemData = [
                     item.displayName,
                     item.agent.status,
                     formatTimeDifference(returnDateBr(item.agent.updatedAt))
                 ];
-            } else if (key === 'usuarios_clientes') {
+            } else if (key === 'usuarios_recepcao_espera') {
                 itemData = [
                     item.user.displayName,
-                    'CHATBOT_EM_ESPERA',
+                    'CHATBOT_RECEPCAO_ESPERA',
+                    formatTimeDifference(returnDateBr(item.updatedAt))
+                ];
+            } else if (key === 'usuarios_gerais_espera') {
+                itemData = [
+                    item.user.displayName,
+                    'CHATBOT_GERAIS_ESPERA',
                     formatTimeDifference(returnDateBr(item.updatedAt))
                 ];
             }
@@ -156,26 +182,29 @@ const formatTimeDifference = (updatedAt) => {
 
 // Constroi grupos de usuarios com base nos status de cada usuario
 const constructGroups = (data) => {
-    let grupos = {
+    const grupos = {
         AGENTES_ONLINE: [],
         AGENTES_OFFLINE: [],
         AGENTES_PAUSE: [],
-        CHATBOT_EM_ESPERA: []
+        CHATBOT_RECEPCAO_ESPERA: [],
+        CHATBOT_GERAIS_ESPERA: []
     };
+
+    const statusToGroup = {
+        'ONLINE': 'AGENTES_ONLINE',
+        'OFFLINE': 'AGENTES_OFFLINE',
+        'PAUSE': 'AGENTES_PAUSE',
+        'CHATBOT_RECEPCAO_ESPERA': 'CHATBOT_RECEPCAO_ESPERA',
+        'CHATBOT_GERAIS_ESPERA': 'CHATBOT_GERAIS_ESPERA'
+    };
+
     data?.forEach(arrayInterno => {
         arrayInterno.forEach(usuario => {
             const nome = usuario[0];
             const status = usuario[1];
             const data = usuario[2];
-            if (status === 'ONLINE') {
-                grupos.AGENTES_ONLINE.push([nome, status, data]);
-            } else if (status === 'OFFLINE') {
-                grupos.AGENTES_OFFLINE.push([nome, status, data]);
-            } else if (status.toUpperCase().includes('PAUSE')) {
-                grupos.AGENTES_PAUSE.push([nome, status, data]);
-            } else if (status === 'CHATBOT_EM_ESPERA') {
-                grupos.CHATBOT_EM_ESPERA.push([nome, status, data]);
-            }
+            const group = statusToGroup[status.toUpperCase().includes('PAUSE') ? 'PAUSE' : status];
+            grupos[group]?.push([nome, status, data]);
         });
     });
 
