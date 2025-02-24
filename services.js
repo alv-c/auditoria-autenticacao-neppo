@@ -1,92 +1,34 @@
+const fs = require('fs');
+
 // busca token para autenticacao da API NEPPO
-const startSearchUsers = () => {
-    const myHeadersGetToken = new Headers();
-    myHeadersGetToken.append("Authorization", process.env.AUTHORIZATION_AUTH_NEPPO);
-    myHeadersGetToken.append("Content-Type", "application/x-www-form-urlencoded");
-    const requestOptionsGetToken = {
-        method: "POST",
-        headers: myHeadersGetToken,
-        body: '{}',
-        redirect: "follow",
-    };
-    fetch(`https://api-auth.neppo.com.br/oauth2/token?grant_type=${process.env.GRANT_TYPE}&username=${process.env.USERNAME_AUTH_NEPPO}&password=${process.env.PASSWORD_AUTH_NEPPO}`, requestOptionsGetToken)
-        .then((response) => response.text())
-        .then((result) => {
-            let response = JSON.parse(result);
-            let dataRequest = {
-                token: `Bearer ${response.access_token}`,
-                requisicoes: {
-                    1: {
-                        indice: 'agentes_nao_autenticados', //referência para mapeamento do objeto de retorno
-                        body: JSON.stringify({
-                            "conditions": [
-                                {
-                                    "key": "profile.id",
-                                    "value": 2,
-                                    "operator": "EQNUM"
-                                },
-                                {
-                                    "key": "profile.id",
-                                    "value": 16,
-                                    "operator": "EQNUM",
-                                    "logic": "OR"
-                                },
-                                {
-                                    "key": "active",
-                                    "operator": "IS_TRUE",
-                                    "logic": "AND"
-                                }
-                            ],
-                            "size": 10000
-                        }),
-                        url: 'https://api.neppo.com.br/chatapi/1.0/api/users'
-                    },
-                    2: {
-                        indice: 'usuarios_recepcao_espera',
-                        body: JSON.stringify({
-                            "conditions": [
-                                {
-                                    "key": "groupConf.id",
-                                    "value": 25,
-                                    "operator": "EQNUM"
-                                },
-                                {
-                                    "key": "status",
-                                    "value": "OPEN",
-                                    "operator": "EQ",
-                                    "logic": "AND"
-                                }
-                            ],
-                            "size": 10000
-                        }),
-                        url: 'https://api.neppo.com.br/chatapi/1.0/api/user-session'
-                    },
-                    3: {
-                        indice: 'usuarios_gerais_espera',
-                        body: JSON.stringify({
-                            "conditions": [
-                                {
-                                    "key": "status",
-                                    "value": "WAITING",
-                                    "operator": "EQ"
-                                },
-                                {
-                                    "key": "user.typeUser",
-                                    "value": "USER",
-                                    "operator": "LIKE",
-                                    "logic": "AND"
-                                }
-                            ],
-                            "size": 10000
-                        }),
-                        url: 'https://api.neppo.com.br/chatapi/1.0/api/user-session'
-                    }
-                }
-            }
-            getUsers(dataRequest);
-        })
-        .catch((error) => console.error(error));
+const startSearchUsers = async () => {
+    try {
+        const myHeadersGetToken = new Headers();
+        myHeadersGetToken.append("Authorization", process.env.AUTHORIZATION_AUTH_NEPPO);
+        myHeadersGetToken.append("Content-Type", "application/x-www-form-urlencoded");
+        const requestOptionsGetToken = {
+            method: "POST",
+            headers: myHeadersGetToken,
+            body: '{}',
+            redirect: "follow",
+        };
+        const response = await fetch(`https://api-auth.neppo.com.br/oauth2/token?grant_type=${process.env.GRANT_TYPE}&username=${process.env.USERNAME_AUTH_NEPPO}&password=${process.env.PASSWORD_AUTH_NEPPO}`, requestOptionsGetToken);
+        const result = await response.text();
+        const responseData = JSON.parse(result);
+        const dataRequest = {
+            token: `Bearer ${responseData.access_token}`,
+            requisicoes: generateRequisicoes()
+        };
+        await getUsers(dataRequest);
+    } catch (error) {
+        console.error(error);
+    }
 }
+
+const generateRequisicoes = () => {
+    const requisicoesConfig = JSON.parse(fs.readFileSync('requisicoesConfig.json', 'utf8'));
+    return requisicoesConfig;
+};
 
 // busca usuarios da API NEPPO utilizando o token de autenticacao retornado de "startSearchUsers"
 const getUsers = async (dataRequest) => {
@@ -100,7 +42,7 @@ const getUsers = async (dataRequest) => {
             const requestOptions = {
                 method: "POST",
                 headers: myHeaders,
-                body: dataRequest.requisicoes[chave].body,
+                body: JSON.stringify(dataRequest.requisicoes[chave].body),
                 redirect: "follow"
             };
             const promise = fetch(dataRequest.requisicoes[chave].url, requestOptions)
@@ -191,6 +133,7 @@ const constructGroups = (data) => {
     };
 
     const statusToGroup = {
+        // status | grupo
         'ONLINE': 'AGENTES_ONLINE',
         'OFFLINE': 'AGENTES_OFFLINE',
         'PAUSE': 'AGENTES_PAUSE',

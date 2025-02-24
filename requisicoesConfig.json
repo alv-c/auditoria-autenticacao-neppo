@@ -1,0 +1,67 @@
+[
+    {
+        "indice": "agentes_nao_autenticados",
+        "body": {
+            "conditions": [
+                {
+                    "key": "profile.id",
+                    "value": 2,
+                    "operator": "EQNUM"
+                },
+                {
+                    "key": "profile.id",
+                    "value": 16,
+                    "operator": "EQNUM",
+                    "logic": "OR"
+                },
+                {
+                    "key": "active",
+                    "operator": "IS_TRUE",
+                    "logic": "AND"
+                }
+            ],
+            "size": 10000
+        },
+        "url": "https://api.neppo.com.br/chatapi/1.0/api/users"
+    },
+    {
+        "indice": "usuarios_recepcao_espera",
+        "body": {
+            "conditions": [
+                {
+                    "key": "groupConf.id",
+                    "value": 25,
+                    "operator": "EQNUM"
+                },
+                {
+                    "key": "status",
+                    "value": "OPEN",
+                    "operator": "EQ",
+                    "logic": "AND"
+                }
+            ],
+            "size": 10000
+        },
+        "url": "https://api.neppo.com.br/chatapi/1.0/api/user-session"
+    },
+    {
+        "indice": "usuarios_gerais_espera",
+        "body": {
+            "conditions": [
+                {
+                    "key": "status",
+                    "value": "WAITING",
+                    "operator": "EQ"
+                },
+                {
+                    "key": "user.typeUser",
+                    "value": "USER",
+                    "operator": "LIKE",
+                    "logic": "AND"
+                }
+            ],
+            "size": 10000
+        },
+        "url": "https://api.neppo.com.br/chatapi/1.0/api/user-session"
+    }
+]
