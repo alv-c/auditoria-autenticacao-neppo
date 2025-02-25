@@ -58,32 +58,32 @@ const getUsers = async (dataRequest) => {
     constructGroups(filterData(data));
 };
 
-// filtra os dados dos usuarios, mantendo apenas o necessario para a construcao dos grupos -> 
-// Nome | Status | Data da ultima autenticacao
+// filtra os dados dos usuarios, mantendo apenas o necessário para a construção dos grupos -> 
+// Nome | Status | Data da última autenticação
 const filterData = (data) => {
-    let arrayData = Array();
+    let arrayData = [];
     Object.keys(data)?.forEach((key) => {
-        let arrayAux = Array();
+        let arrayAux = [];
         data[key]?.forEach((item) => {
             let itemData;
-            if (key === 'agentes_nao_autenticados') { //referência para mapeamento do objeto de retorno
-                itemData = [
-                    item.displayName,
-                    item.agent.status,
-                    formatTimeDifference(returnDateBr(item.agent.updatedAt))
-                ];
+            if (key === 'agentes_nao_autenticados') { // referência para mapeamento do objeto de retorno
+                itemData = {
+                    nome: item.displayName,
+                    status: item.agent.status,
+                    ultimaAutenticacao: formatTimeDifference(returnDateBr(item.agent.updatedAt))
+                };
             } else if (key === 'usuarios_recepcao_espera') {
-                itemData = [
-                    item.user.displayName,
-                    'CHATBOT_RECEPCAO_ESPERA',
-                    formatTimeDifference(returnDateBr(item.updatedAt))
-                ];
+                itemData = {
+                    nome: item.user.displayName,
+                    status: 'CHATBOT_RECEPCAO_ESPERA',
+                    ultimaAutenticacao: formatTimeDifference(returnDateBr(item.updatedAt))
+                };
             } else if (key === 'usuarios_gerais_espera') {
-                itemData = [
-                    item.user.displayName,
-                    'CHATBOT_GERAIS_ESPERA',
-                    formatTimeDifference(returnDateBr(item.updatedAt))
-                ];
+                itemData = {
+                    nome: item.user.displayName,
+                    status: 'CHATBOT_GERAIS_ESPERA',
+                    ultimaAutenticacao: formatTimeDifference(returnDateBr(item.updatedAt))
+                };
             }
             arrayAux.push(itemData);
         });
@@ -143,9 +143,9 @@ const constructGroups = (data) => {
 
     data?.forEach(arrayInterno => {
         arrayInterno.forEach(usuario => {
-            const nome = usuario[0];
-            const status = usuario[1];
-            const data = usuario[2];
+            const nome = usuario.nome;
+            const status = usuario.status;
+            const data = usuario.ultimaAutenticacao;
             const group = statusToGroup[status.toUpperCase().includes('PAUSE') ? 'PAUSE' : status];
             grupos[group]?.push([nome, status, data]);
         });
