@@ -1,4 +1,6 @@
 const fs = require('fs');
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
 // busca token para autenticacao da API NEPPO
 const startSearchUsers = async () => {
@@ -147,13 +149,36 @@ const constructGroups = (data) => {
             const status = usuario.status;
             const data = usuario.ultimaAutenticacao;
             const group = statusToGroup[status.toUpperCase().includes('PAUSE') ? 'PAUSE' : status];
-            grupos[group]?.push([nome, status, data]);
+            grupos[group]?.push({ nome, status, data });
         });
     });
 
-    // Retorna os grupos
-    // return grupos;
-    console.log(grupos);
+    insertDatabase(grupos);
+};
+
+const insertDatabase = async (data) => {
+    const grupoDados = {
+        descricao: "Grupo de auditoria de autenticação NEPPO",
+        data_json: JSON.stringify(data),
+        create_at: new Date(),
+    };
+
+    try {
+        const novoRegistro = await prisma.auditoria_autenticacao_agentes.upsert({
+            where: {
+                id: 1,
+            },
+            update: {
+                data_json: JSON.stringify(data),
+                update_at: new Date(),
+            },
+            create: grupoDados,
+        });
+        console.log("Operação realizada com sucesso:", novoRegistro);
+        return data;
+    } catch (error) {
+        console.error("Erro ao inserir ou atualizar registro:", error);
+    }
 };
 
 module.exports = { startSearchUsers };
