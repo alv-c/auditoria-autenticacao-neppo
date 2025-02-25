@@ -74,18 +74,6 @@ const filterData = (data) => {
                     status: item.agent.status,
                     ultimaAutenticacao: formatTimeDifference(returnDateBr(item.agent.updatedAt))
                 };
-            } else if (key === 'usuarios_recepcao_espera') {
-                itemData = {
-                    nome: item.user.displayName,
-                    status: 'CHATBOT_RECEPCAO_ESPERA',
-                    ultimaAutenticacao: formatTimeDifference(returnDateBr(item.updatedAt))
-                };
-            } else if (key === 'usuarios_gerais_espera') {
-                itemData = {
-                    nome: item.user.displayName,
-                    status: 'CHATBOT_GERAIS_ESPERA',
-                    ultimaAutenticacao: formatTimeDifference(returnDateBr(item.updatedAt))
-                };
             }
             arrayAux.push(itemData);
         });
@@ -139,8 +127,6 @@ const constructGroups = (data) => {
         'ONLINE': 'AGENTES_ONLINE',
         'OFFLINE': 'AGENTES_OFFLINE',
         'PAUSE': 'AGENTES_PAUSE',
-        'CHATBOT_RECEPCAO_ESPERA': 'CHATBOT_RECEPCAO_ESPERA',
-        'CHATBOT_GERAIS_ESPERA': 'CHATBOT_GERAIS_ESPERA'
     };
 
     data?.forEach(arrayInterno => {
