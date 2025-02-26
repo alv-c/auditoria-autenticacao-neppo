@@ -1,6 +1,8 @@
 const fs = require('fs');
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const axios = require('axios');
+const schedule = require('node-schedule');
 
 // busca token para autenticacao da API NEPPO
 const startSearchUsers = async () => {
@@ -118,8 +120,6 @@ const constructGroups = (data) => {
         AGENTES_ONLINE: [],
         AGENTES_OFFLINE: [],
         AGENTES_PAUSE: [],
-        CHATBOT_RECEPCAO_ESPERA: [],
-        CHATBOT_GERAIS_ESPERA: []
     };
 
     const statusToGroup = {
@@ -166,5 +166,30 @@ const insertDatabase = async (data) => {
         console.error("Erro ao inserir ou atualizar registro:", error);
     }
 };
+
+const fazerRequisicao = async () => {
+    try {
+        const response = await axios.get('http://localhost:3001/auditoria-autenticacao-neppo');
+        console.log('Requisição bem-sucedida:', response.data);
+    } catch (error) {
+        console.error('Erro ao fazer requisição:', error.message);
+    }
+};
+
+const agendadorTarefas = () => {
+    // Agendar a tarefa para as 09:00 de segunda a sexta-feira
+    schedule.scheduleJob('0 9 * * 1-5', () => {
+        console.log('Executando requisição às 09:00');
+        fazerRequisicao();
+    });
+
+    // Agendar a tarefa para as 17:30 de segunda a sexta-feira
+    schedule.scheduleJob('30 17 * * 1-5', () => {
+        console.log('Executando requisição às 17:30');
+        fazerRequisicao();
+    });
+}
+
+agendadorTarefas();
 
 module.exports = { startSearchUsers };

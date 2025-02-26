@@ -4,25 +4,14 @@ const { startSearchUsers } = require('./services');
 const { PrismaClient } = require("@prisma/client");
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 const prisma = new PrismaClient();
-
-// Servir arquivos estáticos (HTML, CSS, JS frontend)
-app.use(express.static('public'));
 
 // SERVIÇO DE AUDITORIA DE AUTENTICAÇÃO NEPPO
 app.get('/auditoria-autenticacao-neppo', (req, res) => {
     const resposta = startSearchUsers();
     res.status(201).json(resposta);
 });
-
-/**
- * ================= ROTAS TESTE PRISMA =================
- */
-// Rota de teste
-// app.get("/", (req, res) => {
-//     res.json({ mensagem: "API funcionando com Prisma e MySQL!" });
-// });
 
 // Obter todos os itens (GET)
 app.get("/itens", async (req, res) => {
