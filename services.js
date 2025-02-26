@@ -7,27 +7,32 @@ const schedule = require('node-schedule');
 // busca token para autenticacao da API NEPPO
 const startSearchUsers = async () => {
     try {
-        const myHeadersGetToken = new Headers();
-        myHeadersGetToken.append("Authorization", process.env.AUTHORIZATION_AUTH_NEPPO);
-        myHeadersGetToken.append("Content-Type", "application/x-www-form-urlencoded");
-        const requestOptionsGetToken = {
-            method: "POST",
-            headers: myHeadersGetToken,
-            body: '{}',
-            redirect: "follow",
+        const myHeadersGetToken = {
+            "Authorization": process.env.AUTHORIZATION_AUTH_NEPPO,
+            "Content-Type": "application/x-www-form-urlencoded"
         };
-        const response = await fetch(`https://api-auth.neppo.com.br/oauth2/token?grant_type=${process.env.GRANT_TYPE}&username=${process.env.USERNAME_AUTH_NEPPO}&password=${process.env.PASSWORD_AUTH_NEPPO}`, requestOptionsGetToken);
-        const result = await response.text();
-        const responseData = JSON.parse(result);
+
+        const body = new URLSearchParams();
+        body.append("grant_type", process.env.GRANT_TYPE);
+        body.append("username", process.env.USERNAME_AUTH_NEPPO);
+        body.append("password", process.env.PASSWORD_AUTH_NEPPO);
+
+        const response = await axios.post(
+            'https://api-auth.neppo.com.br/oauth2/token',
+            body,
+            { headers: myHeadersGetToken }
+        );
         const dataRequest = {
-            token: `Bearer ${responseData.access_token}`,
+            token: `Bearer ${response.data.access_token}`,
             requisicoes: generateRequisicoes()
         };
+
         await getUsers(dataRequest);
+
     } catch (error) {
-        console.error(error);
+        console.error('Erro ao realizar a requisição:', error);
     }
-}
+};
 
 const generateRequisicoes = () => {
     const requisicoesConfig = JSON.parse(fs.readFileSync('requisicoesConfig.json', 'utf8'));
@@ -36,25 +41,25 @@ const generateRequisicoes = () => {
 
 // busca usuarios da API NEPPO utilizando o token de autenticacao retornado de "startSearchUsers"
 const getUsers = async (dataRequest) => {
-    const myHeaders = new Headers();
-    myHeaders.append("Authorization", dataRequest?.token);
-    myHeaders.append("Content-Type", "application/json");
-    let data = Array();
+    const headers = {
+        "Authorization": dataRequest?.token,
+        "Content-Type": "application/json"
+    };
+
+    let data = [];
     const promises = [];
+
     for (let chave in dataRequest?.requisicoes) {
         if (dataRequest.requisicoes.hasOwnProperty(chave)) {
-            const requestOptions = {
-                method: "POST",
-                headers: myHeaders,
-                body: JSON.stringify(dataRequest.requisicoes[chave].body),
-                redirect: "follow"
-            };
-            const promise = fetch(dataRequest.requisicoes[chave].url, requestOptions)
-                .then((response) => response.text())
-                .then((result) => {
-                    data[dataRequest.requisicoes[chave].indice] = JSON.parse(result).results;
+            const body = JSON.stringify(dataRequest.requisicoes[chave].body);
+            const promise = axios.post(dataRequest.requisicoes[chave].url, body, { headers })
+                .then((response) => {
+                    data[dataRequest.requisicoes[chave].indice] = response.data.results;
                 })
-                .catch((error) => console.error(error));
+                .catch((error) => {
+                    console.error('Erro ao fazer a requisição:', error);
+                });
+
             promises.push(promise);
         }
     }
@@ -169,7 +174,8 @@ const insertDatabase = async (data) => {
 
 const fazerRequisicao = async () => {
     try {
-        const response = await axios.get('http://localhost:3001/auditoria-autenticacao-neppo');
+        // configurar URI de requisicao
+        const response = await axios.get('http://localhost:3000/auditoria-autenticacao-neppo');
         console.log('Requisição bem-sucedida:', response.data);
     } catch (error) {
         console.error('Erro ao fazer requisição:', error.message);
