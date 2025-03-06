@@ -104,18 +104,9 @@ const formatTimeDifference = (updatedAt) => {
     const hours = Math.floor((diffMinutes % (60 * 24)) / 60);
     const minutes = diffMinutes % 60;
     let timeDifference = '';
-    if (days > 0) {
-        if (days == 1) timeDifference += `${days} dia `;
-        else timeDifference += `${days} dias `;
-    }
-    if (hours > 0) {
-        if (hours == 1) timeDifference += `${hours} hora `;
-        else timeDifference += `${hours} horas `;
-    }
-    if (minutes > 0 || (days === 0 && hours === 0)) {
-        if (minutes == 1) timeDifference += `${minutes} minuto`;
-        else timeDifference += `${minutes} minutos`;
-    }
+    if (days > 0) timeDifference += `${days}d `;
+    if (hours > 0) timeDifference += `${hours}h `;
+    if (minutes > 0 || (days === 0 && hours === 0)) timeDifference += `${minutes}m`;
     return timeDifference || '0m';
 }
 
