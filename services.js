@@ -174,15 +174,21 @@ const fazerRequisicao = async () => {
 };
 
 const agendadorTarefas = () => {
-    // Agendar a tarefa para as 09:00 de segunda a sexta-feira
-    schedule.scheduleJob('0 9 * * 1-5', () => {
-        console.log('Executando requisição às 09:00');
+    // Agendar a tarefa para as 08:58 de segunda a sexta-feira
+    schedule.scheduleJob('58 8 * * 1-5', () => {
+        console.log('Executando requisição às 08:58');
         fazerRequisicao();
     });
 
-    // Agendar a tarefa para as 17:30 de segunda a sexta-feira
-    schedule.scheduleJob('30 17 * * 1-5', () => {
-        console.log('Executando requisição às 17:30');
+    // Agendar a tarefa para as 13:58 de segunda a sexta-feira
+    schedule.scheduleJob('58 13 * * 1-5', () => {
+        console.log('Executando requisição às 13:58');
+        fazerRequisicao();
+    });
+
+    // Agendar a tarefa para as 15:58 de segunda a sexta-feira
+    schedule.scheduleJob('58 15 * * 1-5', () => {
+        console.log('Executando requisição às 15:58');
         fazerRequisicao();
     });
 }
