@@ -79,7 +79,7 @@ const filterData = (data) => {
                 itemData = {
                     nome: item.displayName,
                     status: item.agent.status,
-                    ultimaAutenticacao: formatTimeDifference(returnDateBr(item.agent.updatedAt))
+                    ultimaAutenticacao: formatTimeDifference(returnDateBr(convertUTCtoBRT(item.agent.updatedAt)))
                 };
             }
             arrayAux.push(itemData);
@@ -89,6 +89,12 @@ const filterData = (data) => {
 
     function returnDateBr(data) {
         return new Date(data.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    };
+
+    function convertUTCtoBRT(utcTime) {
+        const utcDate = new Date(utcTime);
+        utcDate.setHours(utcDate.getHours() - 3);
+        return utcDate.toISOString().replace('Z', '');
     };
 
     return arrayData;
